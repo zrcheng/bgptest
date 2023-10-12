@@ -1,0 +1,339 @@
+<configuration-text>
+## Last changed: 2023-06-27 14:08:08 IST
+version 21.2R3.8;
+groups {
+    member0 {
+        system {
+            host-name r4a;
+            backup-router 10.207.255.254;
+        }
+        interfaces {
+            fxp0 {
+                unit 0 {
+                    family inet {
+                        address 10.207.215.120/18;
+                    }
+                }
+            }
+        }
+    }
+    global {
+        system {
+            root-authentication {
+                encrypted-password "$1$ZUlES4dp$OUwWo1g7cLoV/aMWpHUnC/";
+            }
+            login {
+                class wheel {
+                    permissions snmp;
+                }
+                user regress {
+                    uid 928;
+                    class superuser;
+                    shell csh;
+                    authentication {
+                        encrypted-password "$1$kPU..$w.4FGRAGanJ8U4Yq6sbj7.";
+                    }
+                }
+                user remote {
+                    uid 2000;
+                    class super-user;
+                }
+            }
+            services {
+                finger;
+                ftp;
+                rlogin;
+                ssh {
+                    root-login allow;
+                }
+                telnet;
+                xnm-clear-text;
+                netconf {
+                    ssh;
+                }
+            }
+            domain-name englab.juniper.net;
+            domain-search [ englab.juniper.net juniper.net jnpr.net ];
+            time-zone Asia/Calcutta;
+            debugger-on-break;
+            dump-on-panic;
+            authentication-order [ password radius ];
+            name-server {
+                10.204.208.219;
+                10.204.208.221;
+                10.216.41.41;
+            }
+            radius-server {
+                10.48.144.16 secret "$9$TQ/t1IcSrKAt0IRheK8X7VYgaZDm5zNdiqmTn6";
+                10.48.144.17 secret "$9$GqUqf3nCApOPfQn690ORhSeWL7-boZDylsgoGHk";
+            }
+            syslog {
+                host log {
+                    kernel info;
+                    any notice;
+                    pfe info;
+                    interactive-commands any;
+                }
+                file messages {
+                    kernel info;
+                    any notice;
+                    authorization info;
+                    pfe info;
+                    archive world-readable;
+                }
+                file security {
+                    interactive-commands any;
+                    archive world-readable;
+                }
+            }
+            processes {
+                routing enable;
+                ntp enable;
+                management enable;
+                watchdog enable;
+                snmp enable;
+                inet-process enable;
+                mib-process enable;
+            }
+            ntp {
+                boot-server 66.129.255.75;
+                server 66.129.255.75;
+                server 172.29.131.60;
+                server 172.29.135.60;
+            }
+        }
+        chassis {
+            dump-on-panic;
+        }
+        snmp {
+            location "Systest lab";
+            contact "Jay Lloyd";
+            interface fxp0.0;
+            community public {
+                authorization read-only;
+            }
+            community private {
+                authorization read-write;
+            }
+        }
+        routing-options {
+            static {
+                /* corperate and alpha net */
+                route 172.16.0.0/12 {
+                    next-hop 10.207.255.254;
+                    retain;
+                    no-readvertise;
+                }
+                /* eng lab nets */
+                route 192.168.0.0/16 {
+                    next-hop 10.207.255.254;
+                    retain;
+                    no-readvertise;
+                }
+                /* IT Networks */
+                route 10.0.0.0/8 {
+                    next-hop 10.207.255.254;
+                    retain;
+                    no-readvertise;
+                }
+                /* Sacramento */
+                route 66.129.0.0/16 {
+                    next-hop 10.207.255.254;
+                    retain;
+                    no-readvertise;
+                }
+            }
+        }
+    }
+}
+apply-groups [ global member0 ];
+system {
+    ports {
+        console log-out-on-disconnect;
+    }
+}
+chassis {
+    network-services enhanced-ip;
+}
+interfaces {
+    ge-0/0/0 {
+        unit 0 {
+            family inet {
+                address 192.168.24.1/31;
+            }
+            family iso;
+            family mpls {
+                maximum-labels 16;
+            }
+        }
+    }
+    ge-0/0/1 {
+        unit 0 {
+            family inet {
+                address 192.168.34.1/31;
+            }
+            family iso;
+            family mpls {
+                maximum-labels 16;
+            }
+        }
+    }
+    ge-0/0/2 {
+        unit 0 {
+            family inet {
+                address 192.168.45.0/31;
+            }
+            family iso;
+            family mpls {
+                maximum-labels 16;
+            }
+        }
+    }
+    ge-0/0/3 {
+        unit 0 {
+            family inet {
+                address 192.168.100.0/31;
+            }
+            family iso;
+            family mpls;
+        }
+    }
+    lo0 {
+        unit 0 {
+            family inet {
+                address 100.4.4.4/32;
+            }
+            family iso {
+                address 49.0001.0000.0000.0014.00;
+            }
+        }
+    }
+}
+policy-options {
+    policy-statement bgp-to-ted {
+        term ok {
+            from family traffic-engineering;
+            then accept;
+        }
+    }
+    policy-statement exp-bg-te {
+        term ok {
+            then accept;
+        }
+    }
+    policy-statement exp-ibgp-ls {
+        term ok {
+            then accept;
+        }
+    }
+    policy-statement lb {
+        then {
+            load-balance per-packet;
+        }
+    }
+    policy-statement ted-to-bgp {
+        term ok {
+            from protocol [ isis ospf ];
+            then accept;
+        }
+        then reject;
+    }
+}
+routing-options {
+    route-distinguisher-id 100.4.4.4;
+    autonomous-system 100;
+    forwarding-table {
+        export lb;
+    }
+}
+protocols {
+    bgp {
+        group bgp-ls {
+            type external;
+            family traffic-engineering {
+                unicast;
+            }
+            export exp-bg-te;
+            peer-as 200;
+            neighbor 192.168.45.1;
+        }
+        group ibgp-ls {
+            type internal;
+            local-address 100.4.4.4;
+            family traffic-engineering {
+                unicast;
+            }
+            export exp-ibgp-ls;
+            neighbor 100.1.1.1;
+        }
+    }
+    isis {
+        interface ge-0/0/0.0 {
+            level 1 disable;
+            point-to-point;
+        }
+        interface ge-0/0/1.0 {
+            level 1 disable;
+            point-to-point;
+        }
+        interface ge-0/0/2.0 {
+            level 1 disable;
+            point-to-point;
+            passive {
+                remote-node-iso 0000.0000.0024;
+                remote-node-id 192.168.45.1;
+            }
+        }
+        interface lo0.0 {
+            level 1 disable;
+        }
+        level 2 wide-metrics-only;
+        traffic-engineering {
+            advertisement always;
+        }
+    }
+    mpls {
+        traffic-engineering {
+            database {
+                import {
+                    policy ted-to-bgp;
+                    bgp-ls-identifier 100;
+                }
+                export {
+                    policy bgp-to-ted;
+                }
+            }
+        }
+        admin-groups {
+            premium 1;
+        }
+        cross-credibility-cspf;
+        interface ge-0/0/0.0 {
+            admin-group premium;
+        }
+        interface ge-0/0/1.0;
+        interface ge-0/0/2.0 {
+            admin-group premium;
+        }
+    }
+    ospf {
+        traffic-engineering;
+        area 0.0.0.0 {
+            interface ge-0/0/2.0 {
+                interface-type p2p;
+                passive {
+                    traffic-engineering {
+                        remote-node-id 192.168.45.1;
+                        remote-node-router-id 200.4.4.4;
+                    }
+                }
+            }
+        }
+    }
+    rsvp {
+        interface ge-0/0/0.0;
+        interface ge-0/0/1.0;
+        interface ge-0/0/2.0;
+    }
+}
+</configuration-text>
